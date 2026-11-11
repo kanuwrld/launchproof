@@ -29,7 +29,11 @@ func (m Model) View() tea.View {
 		case guidePage:
 			title, body = "A CLEAR START", m.documentView(l, t)
 		default:
-			body = m.homeView(l.contentWidth, l.bodyHeight, t)
+			if m.page >= workspacePage {
+				title, body = m.workspaceTitle(), m.documentView(l, t)
+			} else {
+				body = m.homeView(l.contentWidth, l.bodyHeight, t)
+			}
 		}
 		lines = append(lines, make([]string, l.edge)...)
 		lines = append(lines, m.masthead(l.contentWidth, title, t)...)
@@ -59,8 +63,11 @@ func (m Model) masthead(width int, title string, t ui.Theme) []string {
 }
 
 func (m Model) footer(width int) string {
+	if m.page >= workspacePage {
+		return m.workspaceFooter(width)
+	}
 	if m.page == homePage {
-		return helpText(width, "↑/↓ navigate    enter open    i inspect    q quit", "↑/↓ select · enter · q quit", "enter · q quit")
+		return helpText(width, "↑/↓ navigate    enter open    w workspace    ? help    q quit", "↑/↓ select · enter · q quit", "enter · q quit")
 	}
 	return helpText(width, "↑/↓ scroll    i inspect    r refresh    esc home    q quit", "↑/↓ scroll · esc back · q quit", "esc back · q quit")
 }
@@ -70,7 +77,7 @@ func (m Model) homeView(width, height int, t ui.Theme) []string {
 	if height >= 12 {
 		text := []string{
 			"Discover your stack, scripts, docs, and Git state.",
-			"A clear starting point for your next release.",
+			"Plan, check, read docs, and prepare a handoff.",
 			"Back to your terminal.",
 		}[m.cursor]
 		if m.busy {
@@ -152,7 +159,7 @@ func (m Model) menu(width, height int, t ui.Theme) []string {
 		}
 		lines = append(lines, "")
 	}
-	for i, item := range []string{"Inspect this project", "How it works", "Exit"} {
+	for i, item := range []string{"Inspect this project", "Project workspace", "Exit"} {
 		prefix, style := "  ", t.Text
 		if i == m.cursor {
 			prefix, style = "› ", t.Selected
@@ -170,6 +177,9 @@ func (m Model) menu(width, height int, t ui.Theme) []string {
 }
 
 func (m Model) pageLines(width int, t ui.Theme) []string {
+	if m.page >= workspacePage {
+		return m.workspaceLines(width, t)
+	}
 	if m.page == reportPage {
 		if m.err != nil {
 			return append([]string{t.Title.Render("Could not inspect this project."), ""}, wrapped(t.Text.Render(ui.SafeText(m.err.Error())), width)...)
@@ -180,7 +190,8 @@ func (m Model) pageLines(width int, t ui.Theme) []string {
 	for _, section := range [][2]string{
 		{"01  Start with facts", "Inspect package.json, go.mod, project documents, and Git. Your files stay on your machine."},
 		{"02  Make the next step clear", "See available scripts and missing setup documents. Inspection never runs your project scripts."},
-		{"03  Keep evidence honest", "This first release inspects metadata. It does not execute tests or certify release readiness."},
+		{"03  Run explicit checks", "Open Project workspace to initialize a plan and review launchproof.json. Only Run checks executes its configured commands; use it in projects you trust."},
+		{"04  Keep evidence honest", "Reports contain real check results and a source fingerprint. Source changes mark earlier evidence stale. Skipped checks and unverified assumptions stay visible."},
 	} {
 		lines = append(lines, wrapped(t.Accent.Render(section[0]), width)...)
 		lines = append(lines, wrapped(t.Muted.Render(section[1]), width)...)

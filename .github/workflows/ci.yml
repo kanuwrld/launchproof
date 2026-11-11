@@ -38,3 +38,5 @@ jobs:
       - name: Check JSON output
         shell: bash
         run: go run ./cmd/launchproof inspect . --json
+      - name: Validate documentation
+        run: go run ./cmd/launchproof docs check --json

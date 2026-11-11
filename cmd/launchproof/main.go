@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"os"
+	"os/signal"
 
 	"charm.land/fang/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/kanuwrld/launchproof/internal/cli"
 )
 
-var version = "0.1.1"
+var version = "0.2.0"
 
 func main() {
 	// Fang renders help before RunE, so its writer needs the color preference early.
@@ -22,7 +23,9 @@ func main() {
 		}
 	}
 	root := cli.NewRoot(os.Stdin, os.Stdout, os.Stderr, version)
-	if err := fang.Execute(context.Background(), root, fang.WithVersion(version), fang.WithColorSchemeFunc(colorScheme)); err != nil {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	if err := fang.Execute(ctx, root, fang.WithVersion(version), fang.WithColorSchemeFunc(colorScheme)); err != nil {
 		os.Exit(1)
 	}
 }

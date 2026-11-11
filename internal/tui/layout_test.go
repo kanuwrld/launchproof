@@ -43,11 +43,15 @@ func assertFrame(t *testing.T, m Model) {
 		}
 	}
 	footer := m.height - 1 - m.layout().edge
-	if !strings.Contains(lines[footer], "q quit") {
+	hint := "q quit"
+	if m.page == initPage {
+		hint = "ctrl+c quit"
+	}
+	if !strings.Contains(lines[footer], hint) {
 		t.Fatalf("footer moved off row %d on page %d at %dx%d", footer, m.page, m.width, m.height)
 	}
 	if m.page == homePage {
-		for _, item := range []string{"Inspect this project", "How it works", "Exit"} {
+		for _, item := range []string{"Inspect this project", "Project workspace", "Exit"} {
 			if !strings.Contains(content, item) {
 				t.Fatalf("menu item %q clipped at %dx%d", item, m.width, m.height)
 			}
@@ -65,7 +69,7 @@ func TestLiveResizeReflowsWithoutResettingSelection(t *testing.T) {
 		if strings.Contains(content, "│") != (size[2] == 1) {
 			t.Fatalf("wrong column arrangement at %dx%d", size[0], size[1])
 		}
-		if m.cursor != 1 || !strings.Contains(content, "› How it works") {
+		if m.cursor != 1 || !strings.Contains(content, "› Project workspace") {
 			t.Fatalf("selection lost at %dx%d", size[0], size[1])
 		}
 		assertFrame(t, m)
@@ -93,7 +97,7 @@ func TestGuideAndInspectionErrorsCanScrollToEnd(t *testing.T) {
 		if m.offset == 0 || m.offset != m.scrollLimit() {
 			t.Fatal("End must reach the last viewport")
 		}
-		expected := "readiness."
+		expected := "assumptions stay visible."
 		if currentPage == reportPage {
 			expected = "FINAL DETAIL"
 		}

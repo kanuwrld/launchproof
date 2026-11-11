@@ -32,6 +32,7 @@ type Model struct {
 	color, motion, busy   bool
 	report                project.Report
 	err                   error
+	workspace             workspaceState
 }
 
 func New(ctx context.Context, path, version string, color, motion bool) Model {
@@ -57,10 +58,16 @@ func (m Model) inspect() tea.Cmd {
 }
 
 func (m Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
+	if next, cmd, handled := m.workspaceUpdate(message); handled {
+		return next, cmd
+	}
 	switch msg := message.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		m.offset = min(m.offset, m.scrollLimit())
+		if m.listCount() > 0 {
+			m = m.revealSelection()
+		}
 	case tickMsg:
 		m.frame++
 		if m.motion && m.frame < 60 && m.page == homePage {
@@ -102,7 +109,7 @@ func (m Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 					m.busy = true
 					return m, m.inspect()
 				case 1:
-					m.page, m.offset = guidePage, 0
+					m = m.openWorkspace()
 				case 2:
 					return m, tea.Quit
 				}

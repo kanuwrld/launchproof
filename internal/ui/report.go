@@ -88,5 +88,5 @@ func wrap(text string, width int) []string {
 }
 
 func PlainWelcome(version, path string) string {
-	return fmt.Sprintf("LAUNCHPROOF  %s\n\nKnow what's ready. Know what's next.\nWorkspace: %s\n\n  launchproof inspect       Read project metadata\n  launchproof inspect --json\n  launchproof --help\n\nInspection is local and read-only.\n", SafeText(version), DisplayPath(path))
+	return fmt.Sprintf("LAUNCHPROOF  %s\n\nKnow what's ready. Know what's next.\nWorkspace: %s\n\n  launchproof inspect       Read project metadata\n  launchproof doctor        Diagnose project setup\n  launchproof init          Create specs and a check configuration\n  launchproof check         Run explicitly configured checks\n  launchproof report        Review actual results\n  launchproof handoff       Prepare the next session\n  launchproof docs check    Validate local documentation\n  launchproof --help\n\nInspection is local and read-only.\n", SafeText(version), DisplayPath(path))
 }

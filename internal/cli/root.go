@@ -13,6 +13,7 @@ import (
 	"github.com/kanuwrld/launchproof/internal/project"
 	"github.com/kanuwrld/launchproof/internal/tui"
 	"github.com/kanuwrld/launchproof/internal/ui"
+	"github.com/kanuwrld/launchproof/internal/workflow"
 	"github.com/spf13/cobra"
 )
 
@@ -63,6 +64,9 @@ func NewRoot(in io.Reader, out, errOut io.Writer, version string) *cobra.Command
 			return err
 		}
 		model := tui.New(cmd.Context(), path, version, colorEnabled(), !noMotion)
+		if err := workflow.RememberProject(path); err != nil {
+			fmt.Fprintln(errOut, "Could not update recent projects:", workflow.Redact(err.Error()))
+		}
 		_, err = tea.NewProgram(model, tea.WithInput(in), tea.WithOutput(out), tea.WithContext(cmd.Context())).Run()
 		return err
 	}
@@ -102,6 +106,7 @@ func NewRoot(in io.Reader, out, errOut io.Writer, version string) *cobra.Command
 	}
 	inspect.Flags().BoolVar(&jsonOutput, "json", false, "Write a machine-readable JSON report")
 	root.AddCommand(inspect)
+	root.AddCommand(workflowCommands(in, out, errOut)...)
 	return root
 }
 

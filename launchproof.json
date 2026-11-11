@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "project": {
+    "goal": "Turn project intent into local specs, real checks, and useful evidence.",
+    "audience": "Developers collaborating with coding agents and other developers.",
+    "acceptance": "CLI contracts and responsive TUI workflows pass on Linux, macOS, and Windows.",
+    "constraints": "Keep inspection read-only and execution explicit. Preserve existing documents and keep evidence honest."
+  },
+  "checks": [
+    {"id": "vet", "command": ["go", "vet", "./..."], "timeout_seconds": 120},
+    {"id": "test", "command": ["go", "test", "-race", "./..."], "timeout_seconds": 180},
+    {"id": "build", "command": ["go", "build", "./..."], "timeout_seconds": 120},
+    {"id": "docs", "builtin": "docs"}
+  ]
+}

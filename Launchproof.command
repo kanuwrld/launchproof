@@ -2,6 +2,10 @@
 set -eu
 project_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "$project_dir"
+if [ -x ./.tools/go/bin/go ]; then
+  PATH="$project_dir/.tools/go/bin:$PATH"
+  export PATH
+fi
 if [ ! -x ./bin/launchproof ]; then
 	go_command=go
 	if [ -x ./.tools/go/bin/go ]; then

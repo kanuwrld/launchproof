@@ -8,3 +8,5 @@ coverage.out
 .env
 .env.*
 !.env.example
+/.launchproof/
+__pycache__/

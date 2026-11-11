@@ -41,12 +41,12 @@ func TestWelcomeNavigationAndInspect(t *testing.T) {
 	next, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	m = next.(Model)
 	if m.cursor != 1 {
-		t.Fatal("down arrow must select the guide")
+		t.Fatal("down arrow must select the workspace")
 	}
 	next, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = next.(Model)
-	if m.page != guidePage {
-		t.Fatal("enter should open the guide")
+	if m.page != workspacePage {
+		t.Fatal("enter should open the workspace")
 	}
 	next, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	m = next.(Model)
