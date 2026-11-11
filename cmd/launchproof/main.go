@@ -9,7 +9,7 @@ import (
 	"github.com/kanuwrld/launchproof/internal/cli"
 )
 
-var version = "0.1.0-dev"
+var version = "0.1.1"
 
 func main() {
 	// Fang renders help before RunE, so its writer needs the color preference early.

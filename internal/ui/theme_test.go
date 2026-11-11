@@ -36,3 +36,14 @@ func TestLongReportFitsTerminalWidth(t *testing.T) {
 		}
 	}
 }
+
+func TestNarrowReportKeepsDocumentStatusAndDisclaimer(t *testing.T) {
+	report := project.Report{Documents: []project.Document{{Name: "README.md", Present: false}}}
+	lines := ReportLines(report, 22, NewTheme(false))
+	text := strings.Join(strings.Fields(strings.Join(lines, "\n")), " ")
+	for _, expected := range []string{"README.md not found", "No repository detected", "Inspection only. No checks executed."} {
+		if !strings.Contains(text, expected) {
+			t.Fatalf("narrow report lost %q: %s", expected, text)
+		}
+	}
+}

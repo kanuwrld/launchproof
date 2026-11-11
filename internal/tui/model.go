@@ -85,7 +85,7 @@ func (m Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.inspect()
 			}
 		case "?":
-			m.page = guidePage
+			m.page, m.offset = guidePage, 0
 		}
 		if m.busy {
 			return m, nil
@@ -102,25 +102,28 @@ func (m Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 					m.busy = true
 					return m, m.inspect()
 				case 1:
-					m.page = guidePage
+					m.page, m.offset = guidePage, 0
 				case 2:
 					return m, tea.Quit
 				}
 			}
-		} else if m.page == reportPage {
+		} else {
+			lineCount := len(m.pageLines(m.contentWidth(), ui.NewTheme(m.color)))
+			visible := m.viewport(lineCount)
+			limit := max(0, lineCount-visible)
 			switch key {
 			case "up", "k":
 				m.offset = max(0, m.offset-1)
 			case "down", "j":
-				m.offset = min(m.scrollLimit(), m.offset+1)
+				m.offset = min(limit, m.offset+1)
 			case "pgdown", " ":
-				m.offset = min(m.scrollLimit(), m.offset+max(1, m.height-9))
+				m.offset = min(limit, m.offset+visible)
 			case "pgup":
-				m.offset = max(0, m.offset-max(1, m.height-9))
+				m.offset = max(0, m.offset-visible)
 			case "home", "g":
 				m.offset = 0
 			case "end", "G":
-				m.offset = m.scrollLimit()
+				m.offset = limit
 			}
 		}
 	}
@@ -128,13 +131,13 @@ func (m Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) contentWidth() int {
-	return max(12, min(88, m.width-6))
+	return m.layout().contentWidth
 }
 
 func (m Model) scrollLimit() int {
-	if m.err != nil {
+	if m.page == homePage {
 		return 0
 	}
-	lines := ui.ReportLines(m.report, m.contentWidth(), ui.NewTheme(m.color))
-	return max(0, len(lines)-max(1, m.height-9))
+	lines := m.pageLines(m.contentWidth(), ui.NewTheme(m.color))
+	return max(0, len(lines)-m.viewport(len(lines)))
 }

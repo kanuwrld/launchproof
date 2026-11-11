@@ -13,10 +13,19 @@ func ReportLines(report project.Report, width int, theme Theme) []string {
 	lines := []string{theme.Title.Render(Fit(SafeText(report.Name), width)), theme.Dim.Render(Fit(DisplayPath(report.Path), width)), ""}
 	row := func(label, value string) {
 		if width < 36 {
-			lines = append(lines, theme.Muted.Render(label), "  "+theme.Text.Render(Fit(SafeText(value), width-2)))
+			lines = append(lines, theme.Muted.Render(label))
+			for _, line := range wrap(theme.Text.Render(SafeText(value)), width-2) {
+				lines = append(lines, "  "+line)
+			}
 			return
 		}
-		lines = append(lines, theme.Muted.Render(fmt.Sprintf("%-12s", label))+theme.Text.Render(Fit(SafeText(value), width-12)))
+		for i, line := range wrap(theme.Text.Render(SafeText(value)), width-12) {
+			prefix := strings.Repeat(" ", 12)
+			if i == 0 {
+				prefix = theme.Muted.Render(fmt.Sprintf("%-12s", label))
+			}
+			lines = append(lines, prefix+line)
+		}
 	}
 	stack := strings.Join(report.Stack, " / ")
 	if stack == "" {
@@ -56,6 +65,10 @@ func ReportLines(report project.Report, width int, theme Theme) []string {
 		if document.Present {
 			marker, status = "●", "present"
 		}
+		if width < 36 {
+			lines = append(lines, "  "+theme.Muted.Render(marker)+" "+theme.Text.Render(SafeText(document.Name)), "    "+theme.Dim.Render(status))
+			continue
+		}
 		line := "  " + theme.Muted.Render(marker) + " " + theme.Text.Render(fmt.Sprintf("%-16s", document.Name)) + " " + theme.Dim.Render(status)
 		lines = append(lines, Fit(line, width))
 	}
@@ -65,7 +78,8 @@ func ReportLines(report project.Report, width int, theme Theme) []string {
 			lines = append(lines, wrap(theme.Muted.Render("  · "+SafeText(finding.Message)), width)...)
 		}
 	}
-	lines = append(lines, "", theme.Muted.Render(Fit("Inspection only. No checks executed.", width)))
+	lines = append(lines, "")
+	lines = append(lines, wrap(theme.Muted.Render("Inspection only. No checks executed."), width)...)
 	return lines
 }
 

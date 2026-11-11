@@ -21,4 +21,4 @@ Prefer the existing libraries. Keep the business logic independent of the TUI. P
 
 ## UI changes
 
-Check narrow and large terminals, long project names, keyboard navigation, `--no-color`, and `--no-motion`. Regenerate the demonstration with `make demo` when the visible interface changes.
+Check wide, square, portrait, and short terminals, long project names, live resizing, keyboard navigation, `--no-color`, and `--no-motion`. Keep the footer at the bottom and ensure long content can be scrolled to the end. Regenerate the demonstration and responsive screenshots with `make demo` when the visible interface changes.

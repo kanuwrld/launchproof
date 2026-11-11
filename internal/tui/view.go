@@ -12,30 +12,33 @@ import (
 )
 
 func (m Model) View() tea.View {
-	t := ui.NewTheme(m.color)
-	width := m.contentWidth()
+	t, l := ui.NewTheme(m.color), m.layout()
 	var lines []string
 	if m.width < 24 || m.height < 10 {
-		lines = []string{"LAUNCHPROOF", "Resize terminal", "q quit"}
+		lines = make([]string, l.height)
+		if l.height >= 3 {
+			lines[0], lines[1] = "LAUNCHPROOF", "Resize terminal"
+		}
+		lines[l.height-1] = "q quit"
 	} else {
+		title := "LAUNCHPROOF"
+		var body []string
 		switch m.page {
 		case reportPage:
-			lines = m.reportView(width, t)
+			title, body = "PROJECT / INSPECT", m.documentView(l, t)
 		case guidePage:
-			lines = m.guideView(width, t)
+			title, body = "A CLEAR START", m.documentView(l, t)
 		default:
-			lines = m.homeView(width, t)
+			body = m.homeView(l.contentWidth, l.bodyHeight, t)
 		}
+		lines = append(lines, make([]string, l.edge)...)
+		lines = append(lines, m.masthead(l.contentWidth, title, t)...)
+		lines = append(lines, "")
+		lines = append(lines, body...)
+		lines = append(lines, "", t.Border.Render(strings.Repeat("─", l.contentWidth)), t.Dim.Render(m.footer(l.contentWidth)))
+		lines = append(lines, make([]string, l.edge)...)
 	}
-	for i := range lines {
-		lines[i] = ui.Fit(lines[i], max(1, m.width-2))
-	}
-	if len(lines) > m.height {
-		lines = lines[:max(0, m.height)]
-	}
-	body := lipgloss.NewStyle().Width(width).Align(lipgloss.Left).Render(strings.Join(lines, "\n"))
-	content := lipgloss.Place(max(1, m.width), max(1, m.height), lipgloss.Center, lipgloss.Center, body)
-	view := tea.NewView(content)
+	view := tea.NewView(l.render(lines))
 	view.AltScreen = true
 	view.WindowTitle = "Launchproof"
 	if m.color {
@@ -49,141 +52,161 @@ func (m Model) masthead(width int, title string, t ui.Theme) []string {
 	left := t.Accent.Render("◈") + t.Muted.Render("  "+title)
 	right := t.Dim.Render(ui.SafeText(m.version))
 	gap := width - lipgloss.Width(left) - lipgloss.Width(right)
-	if gap < 2 {
-		return []string{ui.Fit(left, width), t.Border.Render(strings.Repeat("─", width))}
+	if gap >= 2 {
+		left += strings.Repeat(" ", gap) + right
 	}
-	return []string{left + strings.Repeat(" ", gap) + right, t.Border.Render(strings.Repeat("─", width))}
+	return []string{ui.Fit(left, width), t.Border.Render(strings.Repeat("─", width))}
 }
 
-func (m Model) homeView(width int, t ui.Theme) []string {
-	lines := m.masthead(width, "LAUNCHPROOF", t)
-	lines = append(lines, "")
-	if m.height >= 24 && width >= 74 {
-		copy := t.Dim.Render("F R O M  I D E A  T O  E V I D E N C E") + "\n\n" +
-			wordmark(t) + "\n\n" + t.Muted.Render("Know what's ready. Know what's next.")
-		hero := lipgloss.JoinHorizontal(lipgloss.Center, orbit(m.frame, t), "    ", copy)
-		lines = append(lines, strings.Split(hero, "\n")...)
-		lines = append(lines, "")
-	} else if m.height >= 23 && width >= 44 {
-		lines = append(lines, strings.Split(wordmark(t), "\n")...)
-		lines = append(lines, "", t.Muted.Render("Know what's ready. Know what's next."), "")
-	} else {
-		lines = append(lines, t.Title.Render("Know what's ready."))
-		if width > 27 {
-			lines = append(lines, t.Muted.Render("Know what's next."))
-		}
-		if m.height >= 19 {
-			lines = append(lines, "")
-		}
+func (m Model) footer(width int) string {
+	if m.page == homePage {
+		return helpText(width, "↑/↓ navigate    enter open    i inspect    q quit", "↑/↓ select · enter · q quit", "enter · q quit")
 	}
-	if m.height >= 19 {
-		workspace := ui.SafeText(filepath.Base(m.path))
-		lines = append(lines, t.Dim.Render("WORKSPACE  ")+t.Text.Render(ui.Fit(workspace, width-11)), "")
-	}
-	items := []string{"Inspect this project", "How it works", "Exit"}
-	menuWidth := min(width, 40)
-	for i, item := range items {
-		prefix := "  "
-		style := t.Text
-		if i == m.cursor {
-			prefix, style = "› ", t.Selected
-		}
-		line := style.Render(prefix + item)
-		if i == m.cursor && width >= 44 {
-			line += strings.Repeat(" ", max(2, menuWidth-lipgloss.Width(line)-7)) + t.Dim.Render("enter ↵")
-		}
-		lines = append(lines, lipgloss.NewStyle().Width(menuWidth).Render(line))
-	}
-	if m.height >= 19 {
-		lines = append(lines, "")
-		description := []string{
+	return helpText(width, "↑/↓ scroll    i inspect    r refresh    esc home    q quit", "↑/↓ scroll · esc back · q quit", "esc back · q quit")
+}
+
+func (m Model) homeView(width, height int, t ui.Theme) []string {
+	var description []string
+	if height >= 12 {
+		text := []string{
 			"Discover your stack, scripts, docs, and Git state.",
 			"A clear starting point for your next release.",
 			"Back to your terminal.",
 		}[m.cursor]
 		if m.busy {
-			description = "Reading project metadata…"
+			text = "Reading project metadata…"
 		}
-		lines = append(lines, t.Muted.Render(ui.Fit(description, width)))
+		// A consistent description area keeps the menu still when selection changes.
+		rows := len(wrapped("Discover your stack, scripts, docs, and Git state.", width))
+		description = append(description, t.Border.Render(strings.Repeat("─", width)), "")
+		description = append(description, block(centeredLines(wrapped(t.Muted.Render(text), width), width), width, rows, false)...)
 	}
-	lines = append(lines, t.Border.Render(strings.Repeat("─", width)))
-	footer := "↑/↓ navigate    enter open    i inspect    q quit"
-	if width < 52 {
-		footer = "↑/↓ select · enter · q quit"
-	}
-	if width < 32 {
-		footer = "enter · q quit"
-	}
-	lines = append(lines, t.Dim.Render(ui.Fit(footer, width)))
-	for i := 2; i < len(lines); i++ {
-		lines[i] = lipgloss.PlaceHorizontal(width, lipgloss.Center, lines[i])
-	}
-	return lines
-}
-
-func (m Model) reportView(width int, t ui.Theme) []string {
-	lines := m.masthead(width, "PROJECT / INSPECT", t)
-	lines = append(lines, "")
-	if m.err != nil {
-		body := "Could not inspect this project.\n\n" + ui.SafeText(m.err.Error())
-		errorLines := strings.Split(lipgloss.NewStyle().Width(width).Render(t.Text.Render(body)), "\n")
-		lines = append(lines, errorLines[:min(len(errorLines), max(1, m.height-7))]...)
+	mainHeight := height - len(description)
+	var main []string
+	// Cells are roughly twice as tall as they are wide. The ratio avoids forcing
+	// a portrait or square terminal into columns just because it has many cells.
+	if width >= 100 && m.width*2 >= m.height*5 {
+		leftWidth := (width - 5) / 2
+		rightWidth := width - leftWidth - 5
+		left := block(m.brand(leftWidth, mainHeight, t), leftWidth, mainHeight, true)
+		right := block(m.menu(rightWidth, mainHeight, t), rightWidth, mainHeight, true)
+		for i := range left {
+			main = append(main, left[i]+"  "+t.Border.Render("│")+"  "+right[i])
+		}
 	} else {
-		content := ui.ReportLines(m.report, width, t)
-		visible := max(1, m.height-9)
-		start := min(m.offset, max(0, len(content)-visible))
-		end := min(len(content), start+visible)
-		lines = append(lines, content[start:end]...)
-		for len(lines) < visible+3 {
-			lines = append(lines, "")
+		menu := m.menu(width, mainHeight, t)
+		gap := 0
+		brand := m.brand(width, mainHeight-len(menu)-1, t)
+		if len(brand) > 0 {
+			gap = 1
 		}
-		if len(content) > visible {
-			lines = append(lines, t.Dim.Render(fmt.Sprintf("%d–%d of %d lines", start+1, end, len(content))))
-		} else {
-			lines = append(lines, "")
-		}
+		main = append(main, brand...)
+		main = append(main, make([]string, gap)...)
+		main = append(main, menu...)
+		main = block(main, width, mainHeight, true)
 	}
-	footer := "↑/↓ scroll    r refresh    esc home    q quit"
-	if width < 50 {
-		footer = "↑/↓ scroll · esc back · q quit"
-	}
-	if width < 32 {
-		footer = "esc back · q quit"
-	}
-	lines = append(lines, "", t.Border.Render(strings.Repeat("─", width)), t.Dim.Render(ui.Fit(footer, width)))
-	return lines
+	return append(main, description...)
 }
 
-func (m Model) guideView(width int, t ui.Theme) []string {
-	lines := m.masthead(width, "A CLEAR START", t)
-	paragraphs := []string{
-		"01  Start with facts",
-		"Inspect package.json, go.mod, project documents, and Git. Your files stay on your machine.",
-		"02  Make the next step clear",
-		"See available scripts and missing setup documents. Inspection never runs your project scripts.",
-		"03  Keep evidence honest",
-		"This first release inspects metadata. It does not execute tests or certify release readiness.",
+func (m Model) brand(width, height int, t ui.Theme) []string {
+	if height < 3 {
+		return nil
 	}
-	lines = append(lines, "")
-	for i, paragraph := range paragraphs {
-		style := t.Muted
-		if i%2 == 0 {
-			style = t.Accent
+	title := []string{t.Title.Render("LAUNCHPROOF")}
+	if width >= lipgloss.Width(wordmark(t)) {
+		title = strings.Split(wordmark(t), "\n")
+	}
+	eyebrow := helpText(width, "F R O M  I D E A  T O  E V I D E N C E", "FROM IDEA TO EVIDENCE")
+	tagline := wrapped(t.Muted.Render("Know what's ready. Know what's next."), width)
+	compact := append([]string{t.Dim.Render(eyebrow), ""}, title...)
+	compact = append(compact, "")
+	compact = append(compact, tagline...)
+	if width >= 24 && height >= len(compact)+12 {
+		full := []string{t.Dim.Render(eyebrow), ""}
+		full = append(full, centeredLines(strings.Split(orbit(m.frame, t), "\n"), width)...)
+		full = append(full, "")
+		full = append(full, title...)
+		full = append(full, "")
+		full = append(full, tagline...)
+		return centeredLines(full, width)
+	}
+	if len(compact) <= height {
+		return centeredLines(compact, width)
+	}
+	minimal := append([]string{t.Title.Render("LAUNCHPROOF")}, tagline...)
+	if len(minimal) <= height {
+		return centeredLines(minimal, width)
+	}
+	return nil
+}
+
+func (m Model) menu(width, height int, t ui.Theme) []string {
+	menuWidth := min(width, 48)
+	var lines []string
+	if height >= 6 {
+		workspace := ui.SafeText(filepath.Base(m.path))
+		if menuWidth >= 32 {
+			lines = append(lines, t.Dim.Render("WORKSPACE  ")+t.Text.Render(ui.Fit(workspace, menuWidth-11)))
+		} else {
+			lines = append(lines, t.Dim.Render("WORKSPACE"), t.Text.Render(ui.Fit(workspace, menuWidth)))
 		}
-		lines = append(lines, strings.Split(lipgloss.NewStyle().Width(width).Render(style.Render(paragraph)), "\n")...)
-		if i%2 == 1 {
+		lines = append(lines, "")
+	}
+	for i, item := range []string{"Inspect this project", "How it works", "Exit"} {
+		prefix, style := "  ", t.Text
+		if i == m.cursor {
+			prefix, style = "› ", t.Selected
+		}
+		line := style.Render(prefix + item)
+		if i == m.cursor && menuWidth >= 34 {
+			line += strings.Repeat(" ", menuWidth-lipgloss.Width(line)-7) + t.Dim.Render("enter ↵")
+		}
+		lines = append(lines, line)
+		if i < 2 && height >= 10 {
 			lines = append(lines, "")
 		}
 	}
-	if len(lines) > m.height-3 {
-		lines = lines[:max(3, m.height-3)]
+	return centeredLines(block(lines, menuWidth, len(lines), false), width)
+}
+
+func (m Model) pageLines(width int, t ui.Theme) []string {
+	if m.page == reportPage {
+		if m.err != nil {
+			return append([]string{t.Title.Render("Could not inspect this project."), ""}, wrapped(t.Text.Render(ui.SafeText(m.err.Error())), width)...)
+		}
+		return ui.ReportLines(m.report, width, t)
 	}
-	footer := "esc home    i inspect    q quit"
-	if width < 32 {
-		footer = "esc back · q quit"
+	var lines []string
+	for _, section := range [][2]string{
+		{"01  Start with facts", "Inspect package.json, go.mod, project documents, and Git. Your files stay on your machine."},
+		{"02  Make the next step clear", "See available scripts and missing setup documents. Inspection never runs your project scripts."},
+		{"03  Keep evidence honest", "This first release inspects metadata. It does not execute tests or certify release readiness."},
+	} {
+		lines = append(lines, wrapped(t.Accent.Render(section[0]), width)...)
+		lines = append(lines, wrapped(t.Muted.Render(section[1]), width)...)
+		lines = append(lines, "")
 	}
-	lines = append(lines, t.Border.Render(strings.Repeat("─", width)), t.Dim.Render(footer))
-	return lines
+	return lines[:len(lines)-1]
+}
+
+func (m Model) viewport(lines int) int {
+	height := m.layout().bodyHeight
+	if lines > height {
+		height-- // Reserve a scroll-position row without moving the footer.
+	}
+	return max(1, height)
+}
+
+func (m Model) documentView(l frameLayout, t ui.Theme) []string {
+	content := m.pageLines(l.contentWidth, t)
+	visible := m.viewport(len(content))
+	start := min(m.offset, max(0, len(content)-visible))
+	end := min(len(content), start+visible)
+	lines := block(content[start:end], l.contentWidth, visible, false)
+	if len(content) > visible {
+		lines = append(lines, t.Dim.Render(ui.Fit(fmt.Sprintf("%d–%d of %d lines", start+1, end, len(content)), l.contentWidth)))
+	}
+	return block(lines, l.contentWidth, l.bodyHeight, false)
 }
 
 func wordmark(t ui.Theme) string {

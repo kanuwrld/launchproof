@@ -1,4 +1,4 @@
-VERSION ?= 0.1.0-dev
+VERSION ?= 0.1.1
 GO ?= $(if $(wildcard .tools/go/bin/go),.tools/go/bin/go,go)
 GOFMT ?= $(if $(wildcard .tools/go/bin/gofmt),.tools/go/bin/gofmt,gofmt)
 
@@ -22,3 +22,4 @@ fmt:
 
 demo: build
 	vhs docs/demo.tape
+	sh docs/screenshots.sh
