@@ -28,10 +28,11 @@ def notices(go):
         if module.get("Main") or not module.get("Dir"):
             continue
         directory = Path(module["Dir"])
-        license_file = next((directory / name for name in ("LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING") if (directory / name).is_file()), None)
-        if license_file is None:
+        license_files = sorted(path for path in directory.iterdir() if path.is_file() and path.name.upper().startswith(("LICENSE", "COPYING", "NOTICE")))
+        if not license_files:
             raise RuntimeError(f"Review license packaging for {module['Path']}")
-        sections.append(f"{module['Path']} {module['Version']}\n{'=' * 72}\n{license_file.read_text()}\n")
+        for license_file in license_files:
+            sections.append(f"{module['Path']} {module['Version']} — {license_file.name}\n{'=' * 72}\n{license_file.read_text()}\n")
     go_root = Path(run([go, "env", "GOROOT"], capture_output=True).stdout.strip())
     sections.append("Go standard library\n" + "=" * 72 + "\n" + (go_root / "LICENSE").read_text())
     return "\n".join(sections)
