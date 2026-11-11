@@ -9,6 +9,7 @@
 - Prepare a local handoff with project facts, decisions, tasks, and verification.
 - Add a TUI workspace, project folder picker, recent projects, and Markdown viewer.
 - Keep responsive full-height layouts and accessible plain output.
+- Discover documents and fingerprint sources even inside directories ignored by a parent repository.
 - Add cross-platform subprocess tests and refreshed installation instructions and demos.
 
 ## 0.1.1 — 2026-11-11

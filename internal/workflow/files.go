@@ -171,7 +171,9 @@ func excluded(name string, patterns []string) bool {
 
 func SourceFiles(ctx context.Context, root string, patterns []string) ([]string, error) {
 	var files []string
-	if _, err := gitOutput(ctx, root, "rev-parse", "--show-toplevel"); err == nil {
+	_, gitErr := gitOutput(ctx, root, "rev-parse", "--show-toplevel")
+	_, ignoredErr := gitOutput(ctx, root, "check-ignore", "--quiet", ".")
+	if gitErr == nil && ignoredErr != nil {
 		data, err := gitOutput(ctx, root, "ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", ".")
 		if err != nil {
 			return nil, fmt.Errorf("list source files: %w", err)
@@ -179,7 +181,7 @@ func SourceFiles(ctx context.Context, root string, patterns []string) ([]string,
 		files = strings.Split(string(data), "\x00")
 	} else {
 		ignore := map[string]bool{".git": true, "node_modules": true, ".next": true, "dist": true, "build": true, "coverage": true, ".tools": true, "bin": true, "work": true, "vendor": true, ".cache": true, ".venv": true}
-		err = filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
+		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
 				return walkErr
 			}

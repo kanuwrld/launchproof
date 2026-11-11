@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -113,10 +114,14 @@ func TestCancellationAndTimeoutArePersisted(t *testing.T) {
 		ctx := context.Background()
 		cancel := func() {}
 		if !timeout {
-			ctx, cancel = context.WithTimeout(ctx, 350*time.Millisecond)
+			ctx, cancel = context.WithCancel(ctx)
 		}
 		start := time.Now()
-		run, err := Execute(ctx, root, cfg, nil)
+		run, err := Execute(ctx, root, cfg, func(event Event) {
+			if !timeout && event.Kind == "started" && event.Index == 0 {
+				time.AfterFunc(150*time.Millisecond, cancel)
+			}
+		})
 		cancel()
 		if err != nil {
 			t.Fatal(err)
@@ -261,5 +266,34 @@ func TestLiveOutputArrivesBeforeCheckFinishes(t *testing.T) {
 	})
 	if err != nil || !outputSeen || !finished {
 		t.Fatalf("live log missing: %v", err)
+	}
+}
+
+func TestIgnoredProjectStillInspectsItsOwnFiles(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("Git is unavailable")
+	}
+	parent := t.TempDir()
+	if out, err := exec.Command("git", "init", parent).CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v %s", err, out)
+	}
+	put(t, parent, ".gitignore", "scratch/\n")
+	root := filepath.Join(parent, "scratch", "project")
+	if err := os.MkdirAll(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	put(t, root, "README.md", "# Nested project\n")
+	report, err := CheckDocs(context.Background(), root)
+	if err != nil || report.Files != 1 {
+		t.Fatalf("ignored child lost its documents: %v %+v", err, report)
+	}
+	before, err := Fingerprint(context.Background(), root, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	put(t, root, "README.md", "# Changed project\n")
+	after, err := Fingerprint(context.Background(), root, nil)
+	if err != nil || before.Digest == after.Digest || before.Files != 1 {
+		t.Fatalf("nested project has empty evidence: %v %+v %+v", err, before, after)
 	}
 }

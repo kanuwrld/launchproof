@@ -178,7 +178,7 @@ When stdin or stdout is not a terminal, in CI, with `TERM=dumb`, or with `ACCESS
 
 Run history lives in `.launchproof/runs/`; `latest.json` identifies the newest result. Reports recalculate freshness against current files and HEAD. Exporting inside `.launchproof/` does not invalidate evidence. Writing elsewhere may create a source change; existing files outside managed state are never overwritten by `report`.
 
-- Fingerprints cover Git-tracked and non-ignored source files, or a directory walk without Git, plus the configuration. `.launchproof/` and configured exclusions are omitted. Limits: 25,000 files, 256 MiB, 30 seconds.
+- Fingerprints cover Git-tracked and non-ignored source files, or a directory walk when Git does not track the selected project directory, plus the configuration. `.launchproof/` and configured exclusions are omitted. Limits: 25,000 files, 256 MiB, 30 seconds.
 - Private file contents are not read for fingerprinting; only their size and modification time are used. Dependency installations, environment values, external symlink targets, and external services are outside this evidence.
 - Logs retain the last 64 KiB per command. Known secret-like environment values and common token formats are redacted; **review exports before sharing**, because arbitrary secrets cannot be reliably detected.
 - `handoff` includes detected facts, config answers, changed file paths, DECISIONS.md and TASKS.md when present, and the latest results. Project-authored Markdown is treated as context, never executed.
