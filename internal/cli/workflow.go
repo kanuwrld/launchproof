@@ -285,5 +285,5 @@ func workflowCommands(in io.Reader, out, errOut io.Writer) []*cobra.Command {
 	}}
 	projects.Flags().BoolVar(&projectsJSON, "json", false, "Write recent folders as JSON")
 	projects.AddCommand(&cobra.Command{Use: "add <path>", Short: "Remember a project folder locally", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error { return workflow.RememberProject(args[0]) }})
-	return []*cobra.Command{doctor, initialize, check, report, handoff, docs, view, projects}
+	return []*cobra.Command{statusCommand(out), doctor, initialize, check, report, handoff, docs, view, projects}
 }

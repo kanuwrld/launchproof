@@ -25,4 +25,4 @@ Check wide, square, portrait, and short terminals, long project names, live resi
 
 ## Release packaging
 
-From a clean committed checkout, run `python3 scripts/package-release.py 0.2.0`. It cross-compiles six archives into `dist/`, includes documentation and dependency licenses, and writes `checksums.txt`. Use a new version and fresh output directory for each release. Publish only the commit that passed CI.
+From a clean committed checkout, run `python3 scripts/package-release.py 0.3.0 --output dist/0.3.0`. It cross-compiles six archives, includes documentation and dependency licenses, and writes `checksums.txt`. Use a new version and fresh output directory for each release. Publish only the commit that passed CI.

@@ -97,7 +97,7 @@ func TestGuideAndInspectionErrorsCanScrollToEnd(t *testing.T) {
 		if m.offset == 0 || m.offset != m.scrollLimit() {
 			t.Fatal("End must reach the last viewport")
 		}
-		expected := "assumptions stay visible."
+		expected := "check plan for review."
 		if currentPage == reportPage {
 			expected = "FINAL DETAIL"
 		}

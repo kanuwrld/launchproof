@@ -1,4 +1,4 @@
-VERSION ?= 0.2.0
+VERSION ?= 0.3.0
 GO ?= $(if $(wildcard .tools/go/bin/go),.tools/go/bin/go,go)
 GOFMT ?= $(if $(wildcard .tools/go/bin/gofmt),.tools/go/bin/gofmt,gofmt)
 

@@ -10,6 +10,7 @@ A local CLI workspace for turning a project idea into specs, real checks, and a 
 
 ## What it does
 
+- **Status** shows changed files, current or stale evidence, acceptance mappings, and the next action without executing checks.
 - **Inspect** the actual stack, package manager, scripts, documents, and Git state.
 - **Initialize** SPEC.md, TASKS.md, AGENTS.md, and an explicit check configuration from four project questions.
 - **Diagnose** missing runtimes, dependencies, configuration, and setup documents.
@@ -24,7 +25,7 @@ Inspection, doctor, and documentation validation do not execute project scripts.
 
 ### Download a binary — no Go required
 
-Open the [v0.2.0 release](https://github.com/kanuwrld/launchproof/releases/tag/v0.2.0), download the archive for your operating system and CPU, and extract it.
+Open the [v0.3.0 release](https://github.com/kanuwrld/launchproof/releases/tag/v0.3.0), download the archive for your operating system and CPU, and extract it.
 
 | Computer | Archive suffix |
 | --- | --- |
@@ -66,7 +67,7 @@ On macOS, `Launchproof.command` also builds the CLI if needed and opens it in Te
 ### Install with Go
 
 ```sh
-go install github.com/kanuwrld/launchproof/cmd/launchproof@v0.2.0
+go install github.com/kanuwrld/launchproof/cmd/launchproof@v0.3.0
 ```
 
 Go puts the executable in `GOBIN`, or in the `bin` directory under `go env GOPATH` when `GOBIN` is unset. Add that directory to your shell's `PATH`.
@@ -78,6 +79,8 @@ These examples assume `launchproof` is on your `PATH`. From a source checkout, u
 ```sh
 launchproof                           # responsive interactive workspace
 launchproof /path/to/project           # open another project
+launchproof status                    # changes, evidence gaps, next actions; read-only
+launchproof status --strict --json     # nonzero when configured verification is incomplete
 launchproof inspect --json             # read-only discovery, one JSON document
 launchproof doctor                    # diagnose setup; never runs project scripts
 launchproof init                      # four questions; preserve existing files
@@ -95,7 +98,7 @@ launchproof --help
 launchproof completion zsh
 ```
 
-For a typical existing project: **doctor → init → review the config → check → report → handoff**. Initialization uses your answers and detected commands; missing requirements remain explicitly undecided. Existing specs and instructions are preserved. Existing `.gitignore` gains an entry for private run state.
+For a typical existing project: **status → doctor → init → review the config → check → status → handoff**. Initialization uses your answers and detected commands; missing requirements remain explicitly undecided. An acceptance answer becomes an unmapped requirement: link it to checks that actually exercise it. Existing specs and instructions are preserved. Existing `.gitignore` gains an entry for private run state.
 
 Non-interactive setup:
 
@@ -108,7 +111,28 @@ launchproof check --only test,docs --json
 launchproof report --json
 ```
 
-`doctor`, `init`, `check`, `report`, `docs check`, and `projects` support `--json`. `--json` emits one document on stdout; errors go to stderr. Failed, cancelled, timed-out, or stale checks exit nonzero. Skips remain visible and do not count as passing checks. A run with no passing checks exits nonzero.
+`status`, `doctor`, `init`, `check`, `report`, `docs check`, and `projects` support `--json`. `--json` emits one document on stdout; errors go to stderr. Failed, cancelled, timed-out, or stale check runs exit nonzero. Skips remain visible and do not count as passing checks. A run with no passing checks exits nonzero. `report` displays evidence; use `status --strict` for a complete-scope exit check.
+
+## Daily status
+
+```sh
+launchproof status
+launchproof check --dry-run
+launchproof check
+launchproof status --strict
+```
+
+`status` reads the selected project's Git changes and latest saved run. It reports staged, unstaged, and untracked paths, excludes managed state and configured exclusions, and hides sensitive filenames. It works without Git; no Git worktree means changes cannot be listed, not that verification failed. Renames appear as deletion/addition. The path list is limited to 200 entries with an omitted count.
+
+The normal command exits successfully when it can produce a status, including missing configuration or evidence. `--strict` exits nonzero unless **all configured checks** have current passing results and **every declared requirement** is linked to passing checks. A run made with `check --only` keeps other checks skipped, so it cannot silently pass the strict gate. Evidence comes from the latest run only; older runs are not merged into a green result.
+
+When no requirements are declared, the gate covers checks only and the output states that no acceptance mapping exists. `evidenced` means linked checks passed; it does not establish that the mapping is sufficient or the feature is complete. Changes to source, configuration, or HEAD make evidence stale. Dependencies, environment values, and external services remain outside the fingerprint.
+
+In the TUI, press **s** from home. Use **r** to refresh and **c** to open the command plan; only Enter on that plan starts execution.
+
+![Project status with source changes, check results, and requirement evidence](assets/status.png)
+
+Example after editing source: previous results are stale until the checks run again.
 
 ## Check configuration
 
@@ -129,11 +153,18 @@ launchproof report --json
     {"id": "docs", "builtin": "docs"},
     {"id": "manual", "skip_reason": "Record the manual acceptance review separately."}
   ],
+  "requirements": [
+    {"id": "cli-contract", "description": "CLI input, output, and exit codes match the tested contract", "checks": ["test"]},
+    {"id": "documentation", "description": "Local documentation links and script references resolve", "checks": ["docs"]},
+    {"id": "manual-acceptance", "description": "Review the complete user workflow", "checks": []}
+  ],
   "exclude": ["coverage", "dist"]
 }
 ```
 
 Commands are argument arrays, run sequentially from the project directory. There is no implicit shell expansion. Each check must specify exactly one of `command`, `builtin`, or `skip_reason`; IDs must be unique. The default timeout is 120 seconds; the maximum is one hour. At most 24 checks are accepted. Use explicit commands for monorepo or watch-mode test runners.
+
+`requirements` is optional. Each entry has a unique ID, a description, and check IDs from this configuration. An empty `checks` list stays **unmapped** and blocks `status --strict`; skipped checks also block it. The example intentionally leaves manual acceptance unresolved. Do not link a requirement to an unrelated passing check just to make the status green. Up to 100 requirements are supported. Existing version-1 configurations without requirements still work; older Launchproof versions reject the new optional field.
 
 Checks receive `CI=1`, `NO_COLOR=1`, and `TERM=dumb`. On Windows, package-manager `.cmd` wrappers are supported; unsafe shell metacharacters in their arguments are rejected. Native executable arguments are passed directly. Commands have your normal local permissions and can modify files or use the network; Launchproof is not a sandbox.
 
@@ -146,6 +177,8 @@ Choose **Project workspace**, or press **w**, to access checks, doctor, setup, d
 | ↑ / ↓, j / k | Select items or scroll text |
 | Enter | Open an item; start reviewed checks; continue setup |
 | w / c / d / n / m / p / h | From home: workspace / checks / doctor / init / docs / projects / handoff |
+| s | From home: project status |
+| r / c | In status: refresh / open check plan |
 | i / ? | From home: inspect / guide |
 | x | Cancel a running check and remaining checks |
 | r / e | On checks: rerun / export report |

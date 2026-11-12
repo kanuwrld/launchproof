@@ -11,6 +11,12 @@ Show
 Sleep 4s
 Screenshot assets/welcome.png
 Sleep 500ms
+Type "s"
+Sleep 2s
+Screenshot assets/status.png
+Sleep 1s
+Escape
+Escape
 Type "w"
 Sleep 1s
 Screenshot assets/workspace.png

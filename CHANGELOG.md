@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 — 2026-11-12
+
+- Add read-only `status` with scoped Git changes, evidence freshness, and actionable verification gaps.
+- Link acceptance requirements to check IDs without inventing test coverage; preserve unmapped requirements explicitly.
+- Add `status --strict` for CI and scripts: skipped, missing, stale, and failed evidence cannot pass the complete configured scope.
+- Add a responsive status screen with refresh and an explicit check-plan shortcut.
+- Document daily use, partial-run behavior, and the limits of requirement evidence.
+
 ## 0.2.0 — 2026-11-11
 
 - Add project initialization from four questions, preserving existing specs and instructions.

@@ -67,7 +67,7 @@ func (m Model) footer(width int) string {
 		return m.workspaceFooter(width)
 	}
 	if m.page == homePage {
-		return helpText(width, "↑/↓ navigate    enter open    w workspace    ? help    q quit", "↑/↓ select · enter · q quit", "enter · q quit")
+		return helpText(width, "↑/↓ navigate    enter open    s status    w workspace    q quit", "s status · enter · q quit", "enter · q quit")
 	}
 	return helpText(width, "↑/↓ scroll    i inspect    r refresh    esc home    q quit", "↑/↓ scroll · esc back · q quit", "esc back · q quit")
 }
@@ -192,6 +192,7 @@ func (m Model) pageLines(width int, t ui.Theme) []string {
 		{"02  Make the next step clear", "See available scripts and missing setup documents. Inspection never runs your project scripts."},
 		{"03  Run explicit checks", "Open Project workspace to initialize a plan and review launchproof.json. Only Run checks executes its configured commands; use it in projects you trust."},
 		{"04  Keep evidence honest", "Reports contain real check results and a source fingerprint. Source changes mark earlier evidence stale. Skipped checks and unverified assumptions stay visible."},
+		{"05  See what remains", "Press s from home to see Git changes, current evidence, requirements linked to checks, and next actions. Status never executes commands; c opens the check plan for review."},
 	} {
 		lines = append(lines, wrapped(t.Accent.Render(section[0]), width)...)
 		lines = append(lines, wrapped(t.Muted.Render(section[1]), width)...)

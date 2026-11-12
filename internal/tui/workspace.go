@@ -26,9 +26,10 @@ const (
 	initPage
 	doctorPage
 	messagePage
+	statusPage
 )
 
-var workspaceActions = []string{"Run checks", "Project doctor", "Initialize project", "Read documentation", "Export verification report", "Prepare handoff", "Switch project", "How it works", "Back"}
+var workspaceActions = []string{"Run checks", "Project doctor", "Initialize project", "Read documentation", "Export verification report", "Prepare handoff", "Switch project", "How it works", "Project status", "Back"}
 var formQuestions = []string{"What should this project achieve?", "Who is it for?", "What must work before it is done?", "Any constraints or decisions to preserve?"}
 
 type workspaceState struct {
@@ -72,6 +73,11 @@ func (m Model) workspaceTask(kind string) tea.Cmd {
 	return func() tea.Msg {
 		msg := workspaceMsg{kind: kind}
 		switch kind {
+		case "status":
+			var report workflow.ProjectStatus
+			report, msg.err = workflow.Status(ctx, root)
+			msg.text = workflow.StatusText(report)
+			msg.title = "PROJECT STATUS"
 		case "plan":
 			msg.config, msg.err = workflow.LoadConfig(root)
 		case "doctor":
@@ -183,6 +189,9 @@ func (m Model) openAction(index int) (Model, tea.Cmd) {
 	case 7:
 		m.page = guidePage
 		return m, nil
+	case 8:
+		m.busy = true
+		return m, m.workspaceTask("status")
 	default:
 		m.page = homePage
 		return m, nil
@@ -237,6 +246,10 @@ func (m Model) workspaceUpdate(message tea.Msg) (Model, tea.Cmd, bool) {
 			return m, nil, true
 		}
 		switch msg.kind {
+		case "status":
+			m.page = statusPage
+			m.workspace.title = msg.title
+			m.workspace.content = msg.text
 		case "plan":
 			m.page = checksPage
 			m.workspace.config = msg.config
@@ -326,7 +339,7 @@ func (m Model) workspaceUpdate(message tea.Msg) (Model, tea.Cmd, bool) {
 			return m, nil, true
 		}
 		if m.page == homePage {
-			shortcuts := map[string]int{"w": -1, "c": 0, "d": 1, "n": 2, "m": 3, "h": 5, "p": 6}
+			shortcuts := map[string]int{"w": -1, "c": 0, "d": 1, "n": 2, "m": 3, "h": 5, "p": 6, "s": 8}
 			if action, ok := shortcuts[key]; ok {
 				m = m.openWorkspace()
 				if action < 0 {
@@ -369,6 +382,16 @@ func (m Model) workspaceUpdate(message tea.Msg) (Model, tea.Cmd, bool) {
 		}
 		if m.busy {
 			return m, nil, true
+		}
+		if m.page == statusPage {
+			switch key {
+			case "r":
+				m.busy = true
+				return m, m.workspaceTask("status"), true
+			case "c":
+				m, cmd := m.openAction(0)
+				return m, cmd, true
+			}
 		}
 		if m.page == checksPage {
 			if (key == "enter" && m.workspace.run.ID == "" && !m.workspace.running) || key == "r" && !m.workspace.running {
@@ -660,6 +683,9 @@ func (m Model) workspaceTitle() string {
 }
 
 func (m Model) workspaceFooter(width int) string {
+	if m.page == statusPage {
+		return helpText(width, "↑/↓ scroll    r refresh    c check plan    esc back    q quit", "r refresh · c plan · esc · q quit", "esc back · q quit")
+	}
 	if m.page == documentsPage {
 		return helpText(width, "↑/↓ select    enter read    v validate    esc back    q quit", "enter read · v check · q quit", "esc back · q quit")
 	}

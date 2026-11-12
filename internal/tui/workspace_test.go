@@ -127,7 +127,7 @@ func TestProjectPickerAndInitForm(t *testing.T) {
 }
 
 func TestWorkspacePagesStayInsideFrame(t *testing.T) {
-	for _, p := range []page{workspacePage, checksPage, logsPage, projectsPage, browsePage, documentsPage, markdownPage, initPage, doctorPage, messagePage} {
+	for _, p := range []page{workspacePage, checksPage, logsPage, projectsPage, browsePage, documentsPage, markdownPage, initPage, doctorPage, messagePage, statusPage} {
 		for _, size := range [][2]int{{24, 10}, {32, 12}, {60, 40}, {80, 24}, {120, 50}, {180, 50}, {240, 24}} {
 			m := New(context.Background(), "/project", "test", true, false)
 			m.page = p
@@ -167,10 +167,43 @@ func TestCancellationWaitsForEvidence(t *testing.T) {
 
 func TestResizeKeepsWorkspaceSelectionVisible(t *testing.T) {
 	m := New(context.Background(), t.TempDir(), "test", false, false).openWorkspace()
-	m.workspace.cursor = 8
+	m.workspace.cursor = len(workspaceActions) - 1
 	next, _ := m.Update(tea.WindowSizeMsg{Width: 32, Height: 12})
 	m = next.(Model)
 	if !strings.Contains(ansi.Strip(m.View().Content), "› Back") {
 		t.Fatal("selected action disappeared after shrinking")
+	}
+}
+
+func TestStatusShortcutRefreshAndCheckPreview(t *testing.T) {
+	root := t.TempDir()
+	if _, err := workflow.Initialize(context.Background(), root, workflow.Definition{}); err != nil {
+		t.Fatal(err)
+	}
+	m := New(context.Background(), root, "test", false, false)
+	m, cmd := key(m, 's', "s")
+	m = resolve(m, cmd)
+	if m.page != statusPage || !strings.Contains(m.workspace.content, "Evidence: none") {
+		t.Fatalf("status shortcut failed: %s", m.workspace.content)
+	}
+	if _, err := os.Stat(filepath.Join(root, workflow.StateDir)); !os.IsNotExist(err) {
+		t.Fatal("opening status executed checks")
+	}
+	cfg, err := workflow.LoadConfig(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := workflow.Execute(context.Background(), root, cfg, nil); err != nil {
+		t.Fatal(err)
+	}
+	m, cmd = key(m, 'r', "r")
+	m = resolve(m, cmd)
+	if m.page != statusPage || !strings.Contains(m.workspace.content, "Evidence: current") {
+		t.Fatal("status refresh lost current evidence")
+	}
+	m, cmd = key(m, 'c', "c")
+	m = resolve(m, cmd)
+	if m.page != checksPage || m.workspace.running || m.workspace.run.ID != "" {
+		t.Fatal("status shortcut must open a plan, not start checks")
 	}
 }

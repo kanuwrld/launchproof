@@ -32,11 +32,18 @@ type Check struct {
 	SkipReason     string   `json:"skip_reason,omitempty"`
 }
 
+type Requirement struct {
+	ID          string   `json:"id"`
+	Description string   `json:"description"`
+	Checks      []string `json:"checks"`
+}
+
 type Config struct {
-	SchemaVersion int        `json:"schema_version"`
-	Project       Definition `json:"project"`
-	Checks        []Check    `json:"checks"`
-	Exclude       []string   `json:"exclude,omitempty"`
+	SchemaVersion int           `json:"schema_version"`
+	Project       Definition    `json:"project"`
+	Checks        []Check       `json:"checks"`
+	Exclude       []string      `json:"exclude,omitempty"`
+	Requirements  []Requirement `json:"requirements,omitempty"`
 }
 
 func LoadConfig(root string) (Config, error) {
@@ -112,11 +119,34 @@ func (c Config) Validate() error {
 			return errors.New("project answers must be at most 8000 bytes each")
 		}
 	}
+	if len(c.Requirements) > 100 {
+		return errors.New("configure at most 100 requirements")
+	}
+	requirements := map[string]bool{}
+	for _, requirement := range c.Requirements {
+		if !idPattern.MatchString(requirement.ID) || requirements[requirement.ID] {
+			return fmt.Errorf("invalid or duplicate requirement id %q", requirement.ID)
+		}
+		requirements[requirement.ID] = true
+		if strings.TrimSpace(requirement.Description) == "" || len(requirement.Description) > 8000 {
+			return fmt.Errorf("requirement %s needs a description of at most 8000 bytes", requirement.ID)
+		}
+		linked := map[string]bool{}
+		for _, id := range requirement.Checks {
+			if !seen[id] || linked[id] {
+				return fmt.Errorf("requirement %s references an unknown or duplicate check %q", requirement.ID, id)
+			}
+			linked[id] = true
+		}
+	}
 	return nil
 }
 
 func DefaultConfig(report project.Report, definition Definition) Config {
 	cfg := Config{SchemaVersion: 1, Project: definition, Checks: []Check{}}
+	if strings.TrimSpace(definition.Acceptance) != "" {
+		cfg.Requirements = []Requirement{{ID: "acceptance", Description: definition.Acceptance, Checks: []string{}}}
+	}
 	if slices.Contains(report.Stack, "Go") {
 		for _, id := range []string{"vet", "test", "build"} {
 			cfg.Checks = append(cfg.Checks, Check{ID: id, Command: []string{"go", id, "./..."}, TimeoutSeconds: 120})

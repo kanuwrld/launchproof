@@ -11,5 +11,11 @@
     {"id": "test", "command": ["go", "test", "-race", "./..."], "timeout_seconds": 180},
     {"id": "build", "command": ["go", "build", "./..."], "timeout_seconds": 120},
     {"id": "docs", "builtin": "docs"}
+  ],
+  "requirements": [
+    {"id": "cli-contracts", "description": "CLI output and exit codes follow the tested contracts", "checks": ["test"]},
+    {"id": "responsive-tui", "description": "TUI navigation and content fit the tested terminal sizes", "checks": ["test"]},
+    {"id": "local-docs", "description": "Local Markdown references resolve", "checks": ["docs"]},
+    {"id": "compilation", "description": "Go packages build and pass static analysis", "checks": ["build", "vet"]}
   ]
 }
